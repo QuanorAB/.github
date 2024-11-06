@@ -1,0 +1,59 @@
+name: "Next Tag"
+description: "Finds next tag for the repository"
+outputs:
+  next_tag: 
+    description: "The next tag for the repository"
+    value: ${{ steps.bump_version.outputs.new_version }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Get the latest tag
+      id: get_latest_tag
+      run: |
+        # Fetch all tags
+        git fetch --tags
+        # Get the latest tag (if no tag, start with v0.0.0)
+        latest_tag=$(git describe --tags `git rev-list --tags --max-count=1` || echo "0.0.0")
+        echo "latest_tag=$latest_tag" >> $GITHUB_ENV
+
+    - name: Determine the version bump type
+      id: get_bump_type
+      run: |
+        # Retrieve the latest commit message
+        commit_message="$(git log -1 --pretty=%B)"
+
+        # Determine bump type based on commit message
+        if [[ "$commit_message" =~ (MAJOR|major|Major|BREAKING CHANGE): ]]; then
+          echo "bump_type=major" >> $GITHUB_ENV
+        elif [[ "$commit_message" =~ (MINOR|minor|Minor|feat): ]]; then
+          echo "bump_type=minor" >> $GITHUB_ENV
+        elif [[ "$commit_message" =~ (PATCH|patch|Patch|bug|fix): ]]; then
+          echo "bump_type=patch" >> $GITHUB_ENV
+        else
+          echo "bump_type=patch" >> $GITHUB_ENV
+        fi
+
+    - name: Bump version
+      id: bump_version
+      run: |
+        # Parse the latest tag
+        IFS='.' read -r major minor patch <<< "${latest_tag#v}"
+
+        # Determine the type of bump and increment accordingly
+        case $bump_type in
+          major)
+            new_major=$((major + 1))
+            new_version="${new_major}.0.0"
+            ;;
+          minor)
+            new_minor=$((minor + 1))
+            new_version="${major}.${new_minor}.0"
+            ;;
+          patch)
+            new_patch=$((patch + 1))
+            new_version="${major}.${minor}.${new_patch}"
+            ;;
+        esac
+
+        echo "new_version=$new_version" >> $GITHUB_OUTPUT
