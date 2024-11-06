@@ -10,6 +10,7 @@ runs:
   steps:
     - name: Get the latest tag
       id: get_latest_tag
+      shell: bash
       run: |
         # Fetch all tags
         git fetch --tags
@@ -19,6 +20,7 @@ runs:
 
     - name: Determine the version bump type
       id: get_bump_type
+      shell: bash
       run: |
         # Retrieve the latest commit message
         commit_message="$(git log -1 --pretty=%B)"
@@ -34,8 +36,10 @@ runs:
           echo "bump_type=patch" >> $GITHUB_ENV
         fi
 
+
     - name: Bump version
       id: bump_version
+      shell: bash
       run: |
         # Parse the latest tag
         IFS='.' read -r major minor patch <<< "${latest_tag#v}"
